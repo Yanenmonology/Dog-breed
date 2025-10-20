@@ -20,6 +20,7 @@ public class DogApiBreedFetcher implements BreedFetcher {
     private static final OkHttpClient client = new OkHttpClient();
     private static final String API_URL = "https://dog.ceo/api/breed";
     private static final String SUCCESS_CODE = "success";
+    private static final String ERROR_CODE = "error";
 
     /**
      * Fetch the list of sub breeds for the given breed from the dog.ceo API.
@@ -36,25 +37,22 @@ public class DogApiBreedFetcher implements BreedFetcher {
                 .build();
 
         ArrayList<String> SubBreedList = new ArrayList<>();
-        try{
-            final Response response = client.newCall(request).execute();
+        try(Response response = client.newCall(request).execute()){
             final JSONObject responseBody = new JSONObject(response.body().string());
-            // need to reload and overide exceptions from interface.
-        //    if(responseBody.getInt("code") == 404){
-        //        throw BreedNotFoundException();
-        //    }
+            if(responseBody.getString("status").equals(ERROR_CODE)){
+                throw new BreedNotFoundException("Breed Not Found");
+            }
             if (responseBody.getString("status").equals(SUCCESS_CODE)) {
                 final JSONArray subBreeds = responseBody.getJSONArray("message");
-                System.out.println(subBreeds.length());
                 for (int i = 0; i < subBreeds.length(); i++) {
                     SubBreedList.add(subBreeds.getString(i));
                 }
-
             }
-
         }
-        catch (IOException | JSONException | BreedNotFoundException e){
-            new RuntimeException(e);
+        catch (BreedNotFoundException e){
+            throw e;
+        } catch (JSONException | IOException e) {
+            throw new RuntimeException(e);
         }
         return SubBreedList;
     }
